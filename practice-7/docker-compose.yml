@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: practice_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: practice
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 5
+    networks:
+      - practice_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: practice_redis
+    restart: always
+    ports:
+      - '6379:6379'
+    networks:
+      - practice_network
+
+  app:
+    build: .
+    container_name: practice_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - '8080:8080'
+    environment:
+      DB_HOST: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: practice
+      DB_PORT: 5432
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: lltoef3-super-secret-jwt-key-2026
+    networks:
+      - practice_network
+
+volumes:
+  pgdata:
+
+networks:
+  practice_network:
+    driver: bridge
